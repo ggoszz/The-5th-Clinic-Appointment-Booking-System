@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Doctor View Patient List</title>
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@700&family=Aileron&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Aileron', sans-serif;
+      text-align: center;
+      padding: 50px;
+      background-color: #e6f2ff; 
+    }
+    h1 {
+      font-family: 'Arvo', serif;
+      font-size: 2em;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    table {
+      width: auto;
+      max-width: none;
+      border-collapse: collapse;
+      margin: 20px auto;
+      background-color: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      overflow-x: auto;
+      display: block;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 15px;
+      text-align: left;
+      background-color: white;
+      white-space: nowrap;
+    }
+    th {
+      background-color: #003366;
+      color: white;
+    }
+    .form-row {
+      margin-bottom: 15px;
+    }
+    .form-row label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+    .button {
+      padding: 10px 20px;
+      background-color: #003366;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      display: inline-block;
+    }
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin: 0 auto;
+      max-width: 1200px;
+      padding: 0 20px;
+    }
+    .page-title {
+      margin-bottom: 20px;
+    }
+    .header-nav {
+      margin-top: 10px;
+    }
+    .button:hover {
+      background-color: #002244; 
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      margin: 0 auto;
+      max-width: 95%;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="header-placeholder"></div>
+  <div class="header-container">
+    <div class="header-nav">
+      <button class="button" onclick="window.location.href='doctorViewAppointment.html'">
+        View Appointments
+      </button>
+    </div>
+  </div>
+   <div class="page-title">
+      <h1>Patient List</h1>
+    </div>
+  <div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>Patient ID</th>
+        <th>Patient Name</th>
+        <th>DOB</th>
+        <th>Gender</th>
+        <th>Address</th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th>Insurance Name</th>
+        <th>Insurance ID</th>
+        <th>Note</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>001</td>
+        <td>Sophia Brooks</td>
+        <td>10/17/2002</td>
+        <td>F</td>
+        <td>202 Oak Ave, Plano, TX</td>
+        <td>214-234-1234</td>
+        <td>sophia.brooks@email.com</td>
+        <td>Blue Cross</td>
+        <td>BC67890</td>
+        <td>Allergic to penicillin</td>
+      </tr>
+      <tr>
+        <td>002</td>
+        <td>Michael Smith</td>
+        <td>08/22/1978</td>
+        <td>M</td>
+        <td>456 Oak Ave, Plano, TX</td>
+        <td>972-555-5678</td>
+        <td>michael@example.com</td>
+        <td>Aetna</td>
+        <td>AE87654321</td>
+        <td>Prefers morning appointments</td>
+      </tr>
+      <tr>
+        <td>003</td>
+        <td>Emma Johnson</td>
+        <td>11/03/1990</td>
+        <td>F</td>
+        <td>789 Elm Blvd, Richardson, TX</td>
+        <td>469-555-9012</td>
+        <td>emma@example.com</td>
+        <td>Cigna</td>
+        <td>CI13579086</td>
+        <td>History of hypertension</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <button class="button" onclick="window.location.href='doctorLogin.html'">Logout</button>
+  
+  <script>
+     fetch('/components/header.html')
+    .then(response => response.text())
+    .then(data => {
+      document.getElementById('header-placeholder').innerHTML = data;
+    });
+  </script>
+</body>
+</html>
