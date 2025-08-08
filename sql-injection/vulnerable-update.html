@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Password Update - SQL Injection Vulnerable (UPDATE)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@700&family=Aileron&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Aileron', sans-serif;
+      text-align: center;
+      padding: 50px;
+      background-color: #ffebe6; /* Orange tint for vulnerable update */
+    }
+    h1 {
+      font-family: 'Arvo', serif;
+      font-size: 2em;
+      margin-bottom: 20px;
+      font-weight: bold;
+      color: #d35400;
+    }
+    .form-container {
+      margin: 20px auto;
+      max-width: 600px;
+      text-align: left;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
+      margin: 15px 0 5px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    .button {
+      padding: 12px 25px;
+      background-color: #e67e22;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin: 10px auto;
+      display: block;
+      font-size: 16px;
+    }
+    .button:hover {
+      background-color: #d35400;
+    }
+    .warning-box {
+      background-color: #fff3cd;
+      border: 1px solid #ffeaa7;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      color: #856404;
+    }
+    .danger-box {
+      background-color: #f8d7da;
+      border: 1px solid #f5c6cb;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      color: #721c24;
+    }
+    .injection-examples {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 15px 0;
+    }
+    .injection-examples h4 {
+      color: #495057;
+      margin-bottom: 10px;
+    }
+    .injection-examples code {
+      background-color: #e9ecef;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    .results-section {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      display: none;
+    }
+    .current-data {
+      background-color: #e8f5e8;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="header-placeholder"></div>
+  
+  <h1>⚠️ Patient Update Form (SQL Injection Vulnerable)</h1>
+  
+  <div class="form-container">
+    <div class="danger-box">
+      <strong>⚠️ EXTREME WARNING:</strong> This UPDATE form is intentionally vulnerable to SQL injection attacks 
+      for educational purposes. UPDATE injections can modify or destroy database records! 
+      <strong>NEVER use this code in production!</strong>
+    </div>
+
+    <div class="current-data">
+      <h4>📊 Current Patient Data (for reference):</h4>
+      <div id="currentPatients">
+        <strong>Patient 1:</strong> John Smith, Phone: 555-0101, Email: john.smith@email.com<br>
+        <strong>Patient 2:</strong> Jane Doe, Phone: 555-0102, Email: jane.doe@email.com<br>
+        <strong>Patient 3:</strong> Bob Johnson, Phone: 555-0103, Email: bob.johnson@email.com
+      </div>
+    </div>
+
+    <form id="patientUpdateForm" onsubmit="simulateVulnerableUpdate(event)">
+      <label for="updatePatientId">Patient ID to Update:</label>
+      <input type="text" id="updatePatientId" name="updatePatientId" placeholder="Enter patient ID (e.g., 1, 2, 3...)" required>
+      
+      <label for="newPhone">New Phone Number:</label>
+      <input type="text" id="newPhone" name="newPhone" placeholder="Enter new phone number">
+      
+      <label for="newEmail">New Email Address:</label>
+      <input type="email" id="newEmail" name="newEmail" placeholder="Enter new email address">
+      
+      <button type="submit" class="button">Update Patient</button>
+    </form>
+
+    <div class="injection-examples">
+      <h4>🔓 SQL Injection Test Cases for UPDATE:</h4>
+      
+      <p><strong>Patient ID Field (Most Dangerous):</strong></p>
+      <ul>
+        <li>Try: <code>1; UPDATE patients SET phone='HACKED' WHERE 1=1; --</code> (Updates all records)</li>
+        <li>Try: <code>1' OR '1'='1</code> (Updates all patients with the new values)</li>
+        <li>Try: <code>1; DROP TABLE patients; --</code> (Attempts to delete the table)</li>
+      </ul>
+      
+      <p><strong>Phone Number Field:</strong></p>
+      <ul>
+        <li>Try: <code>555-HACK' WHERE patient_id=1 OR '1'='1</code> (Updates all records)</li>
+        <li>Try: <code>555-1234', email='hacked@evil.com' WHERE patient_id=2 OR phone='</code> (Modifies additional fields)</li>
+      </ul>
+      
+      <p><strong>Email Field:</strong></p>
+      <ul>
+        <li>Try: <code>evil@hack.com' WHERE patient_id=1 OR '1'='1; --</code> (Updates all emails)</li>
+        <li>Try: <code>test@test.com'; UPDATE patients SET phone='COMPROMISED'; --</code> (Multiple updates)</li>
+      </ul>
+    </div>
+
+    <div id="resultsSection" class="results-section">
+      <h3>Update Results:</h3>
+      <div id="sqlQuery"></div>
+      <div id="updateResults"></div>
+      <div id="affectedData"></div>
+    </div>
+  </div>
+
+  <script>
+    // Simulate patient data
+    let patientData = [
+      {id: 1, firstName: 'John', lastName: 'Smith', phone: '555-0101', email: 'john.smith@email.com'},
+      {id: 2, firstName: 'Jane', lastName: 'Doe', phone: '555-0102', email: 'jane.doe@email.com'},
+      {id: 3, firstName: 'Bob', lastName: 'Johnson', phone: '555-0103', email: 'bob.johnson@email.com'}
+    ];
+
+    // Simulate header loading
+    fetch('../components/header.html')
+    .then(response => response.text())
+    .then(data => {
+      document.getElementById('header-placeholder').innerHTML = data;
+    }).catch(() => {
+      document.getElementById('header-placeholder').innerHTML = 
+        '<div style="padding: 10px; background: #003366; color: white;"><h2>Clinic Management System</h2></div>';
+    });
+
+    function simulateVulnerableUpdate(event) {
+      event.preventDefault();
+      
+      const patientId = document.getElementById('updatePatientId').value;
+      const newPhone = document.getElementById('newPhone').value;
+      const newEmail = document.getElementById('newEmail').value;
+      
+      // Simulate vulnerable SQL UPDATE query construction
+      let sqlQuery = `UPDATE patients SET `;
+      let setParts = [];
+      
+      if (newPhone) {
+        setParts.push(`phone = '${newPhone}'`);
+      }
+      if (newEmail) {
+        setParts.push(`email = '${newEmail}'`);
+      }
+      
+      if (setParts.length === 0) {
+        alert('Please provide at least one field to update.');
+        return;
+      }
+      
+      sqlQuery += setParts.join(', ') + ` WHERE patient_id = '${patientId}'`;
+      
+      // Display the vulnerable query
+      document.getElementById('sqlQuery').innerHTML = 
+        `<strong>Generated SQL Query:</strong><br>
+         <code style="background: #f8f8f8; padding: 10px; display: block; margin: 10px 0; border-radius: 4px;">${sqlQuery}</code>`;
+      
+      // Simulate update results based on injection patterns
+      let results = simulateUpdateResults(patientId, newPhone, newEmail, sqlQuery);
+      
+      document.getElementById('updateResults').innerHTML = results.message;
+      document.getElementById('affectedData').innerHTML = results.affectedData;
+      document.getElementById('resultsSection').style.display = 'block';
+    }
+    
+    function simulateUpdateResults(patientId, newPhone, newEmail, sqlQuery) {
+      let resultMessage = '';
+      let affectedDataHTML = '<h4>📊 Data After Update:</h4>';
+      let updatedData = JSON.parse(JSON.stringify(patientData)); // Deep copy
+      
+      // Check for common SQL injection patterns
+      if (patientId.includes("1=1") || patientId.includes("'1'='1'") || 
+          (newPhone && newPhone.includes("1=1")) || (newEmail && newEmail.includes("1=1"))) {
+        
+        // Simulate OR 1=1 injection - updates all records
+        updatedData.forEach(patient => {
+          if (newPhone && !newPhone.includes("1=1")) patient.phone = newPhone;
+          if (newEmail && !newEmail.includes("1=1")) patient.email = newEmail;
+        });
+        
+        resultMessage = `<div style="color: red; font-weight: bold;">⚠️ SQL INJECTION DETECTED!</div>
+                        <div style="color: red;">OR 1=1 condition caused ALL ${updatedData.length} patient records to be updated!</div>
+                        <div style="color: orange;">Affected rows: ${updatedData.length}</div>`;
+                        
+      } else if (patientId.includes("; UPDATE") || patientId.includes("DROP TABLE") || 
+                 (newPhone && newPhone.includes("; UPDATE")) || (newEmail && newEmail.includes("; UPDATE"))) {
+        
+        // Simulate stacked query injection
+        if (patientId.includes("DROP TABLE")) {
+          resultMessage = `<div style="color: red; font-weight: bold;">🚨 CRITICAL SQL INJECTION!</div>
+                          <div style="color: red;">Attempted to DROP TABLE patients! Database structure compromised!</div>
+                          <div style="color: red;">In a real system, this would destroy all patient data!</div>`;
+          affectedDataHTML += '<div style="color: red; font-weight: bold;">❌ TABLE DELETED - All data lost!</div>';
+        } else {
+          // Multiple UPDATE statements
+          updatedData.forEach(patient => {
+            patient.phone = 'HACKED';
+            if (newEmail) patient.email = newEmail;
+          });
+          
+          resultMessage = `<div style="color: red; font-weight: bold;">⚠️ STACKED QUERY INJECTION!</div>
+                          <div style="color: red;">Multiple SQL statements executed! All phone numbers compromised!</div>
+                          <div style="color: orange;">Affected rows: ${updatedData.length}</div>`;
+        }
+        
+      } else if ((newPhone && (newPhone.includes("WHERE") || newPhone.includes("OR"))) || 
+                 (newEmail && (newEmail.includes("WHERE") || newEmail.includes("OR")))) {
+        
+        // Field-level injection affecting WHERE clause
+        updatedData.forEach(patient => {
+          if (newPhone && newPhone.includes("HACK")) patient.phone = 'COMPROMISED';
+          if (newEmail && newEmail.includes("evil")) patient.email = 'hacked@evil.com';
+        });
+        
+        resultMessage = `<div style="color: red; font-weight: bold;">⚠️ WHERE CLAUSE INJECTION!</div>
+                        <div style="color: red;">Malicious WHERE condition affected multiple records!</div>
+                        <div style="color: orange;">Affected rows: ${updatedData.length}</div>`;
+                        
+      } else {
+        // Normal update - find and update specific patient
+        let found = false;
+        let targetId = parseInt(patientId);
+        
+        updatedData.forEach(patient => {
+          if (patient.id === targetId) {
+            if (newPhone) patient.phone = newPhone;
+            if (newEmail) patient.email = newEmail;
+            found = true;
+          }
+        });
+        
+        if (found) {
+          resultMessage = `<div style="color: green;">✅ Update successful!</div>
+                          <div>Patient ID ${targetId} updated successfully.</div>
+                          <div style="color: green;">Affected rows: 1</div>`;
+        } else {
+          resultMessage = `<div style="color: orange;">⚠️ No patient found with ID ${targetId}</div>
+                          <div>Affected rows: 0</div>`;
+        }
+      }
+      
+      // Build affected data display
+      if (!patientId.includes("DROP TABLE")) {
+        updatedData.forEach(patient => {
+          affectedDataHTML += `<div><strong>Patient ${patient.id}:</strong> ${patient.firstName} ${patient.lastName}, 
+                               Phone: ${patient.phone}, Email: ${patient.email}</div>`;
+        });
+      }
+      
+      return {
+        message: resultMessage,
+        affectedData: affectedDataHTML
+      };
+    }
+  </script>
+</body>
+</html>

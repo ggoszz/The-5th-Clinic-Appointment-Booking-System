@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Secure User Login - Protected Against SQL Injection</title>
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@700&family=Aileron&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Aileron', sans-serif;
+      text-align: center;
+      padding: 50px;
+      background-color: #e8f5e8; /* Green tint for secure */
+    }
+    h1 {
+      font-family: 'Arvo', serif;
+      font-size: 2em;
+      margin-bottom: 20px;
+      font-weight: bold;
+      color: #27ae60;
+    }
+    .form-container {
+      margin: 20px auto;
+      max-width: 700px;
+      text-align: left;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
+      margin: 15px 0 5px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    .button {
+      padding: 12px 25px;
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin: 10px 5px;
+      display: inline-block;
+    }
+    .button:hover {
+      background-color: #219a52;
+    }
+    .security-info {
+      background-color: #d1ecf1;
+      border: 1px solid #bee5eb;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 30px;
+    }
+    .security-info h3 {
+      color: #0c5460;
+      margin-top: 0;
+    }
+    .safe-example {
+      background-color: #d4edda;
+      border-left: 4px solid #28a745;
+      padding: 10px;
+      margin: 10px 0;
+      font-family: monospace;
+    }
+    .query-display {
+      background-color: #f1f3f4;
+      border: 1px solid #dadce0;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 15px 0;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    .results-table th, .results-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .results-table th {
+      background-color: #f2f2f2;
+    }
+    .code-block {
+      background-color: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="header-placeholder"></div>
+  
+  <h1>🔒 Secure User Login Form (Protected Against SQL Injection)</h1>
+  
+  <div class="form-container">
+    <h2>Part C: Secure SELECT Query with Prepared Statements</h2>
+    <p>This form demonstrates how prepared statements prevent SQL injection attacks by separating SQL code from user data.</p>
+    
+    <form id="secureLoginForm" method="POST" action="secure_login.php">
+      <label for="username">Username:</label>
+      <input type="text" id="username" name="username" placeholder="Enter username" required>
+      
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" placeholder="Enter password" required>
+      
+      <button type="submit" class="button">Secure Login</button>
+      <button type="button" class="button" onclick="testInjectionAttempts()">Test Injection Attempts</button>
+    </form>
+    
+    <div id="queryDisplay" class="query-display" style="display: none;">
+      <strong>Prepared Statement Structure:</strong><br>
+      <span id="sqlQuery"></span>
+      <br><br>
+      <strong>Parameters (safely bound):</strong><br>
+      <span id="parameters"></span>
+    </div>
+    
+    <div id="results" style="display: none;">
+      <h3>Query Results:</h3>
+      <div id="resultsContent"></div>
+    </div>
+  </div>
+  
+  <div class="security-info">
+    <h3>🔒 How Prepared Statements Prevent SQL Injection</h3>
+    
+    <h4>1. Vulnerable Code (DON'T USE):</h4>
+    <div class="code-block">
+      <span style="color: #d73a49;">// VULNERABLE - Direct string concatenation</span><br>
+      $sql = "SELECT * FROM users WHERE username = '" . $username . "' AND password = '" . $password . "';";<br>
+      $result = mysqli_query($connection, $sql);
+    </div>
+    
+    <h4>2. Secure Code with Prepared Statements:</h4>
+    <div class="code-block">
+      <span style="color: #6f42c1;">// SECURE - Prepared statement with parameter binding</span><br>
+      $sql = "SELECT * FROM users WHERE username = ? AND password = ?";<br>
+      $stmt = $connection->prepare($sql);<br>
+      $stmt->bind_param("ss", $username, $password);<br>
+      $stmt->execute();<br>
+      $result = $stmt->get_result();
+    </div>
+    
+    <h4>3. Why Prepared Statements are Secure:</h4>
+    <ul>
+      <li><strong>SQL Structure is Pre-compiled:</strong> The database compiles the SQL statement before user input is added</li>
+      <li><strong>Parameters are Bound Safely:</strong> User input is treated as data only, never as SQL code</li>
+      <li><strong>Special Characters are Escaped:</strong> SQL metacharacters lose their special meaning</li>
+      <li><strong>Type Safety:</strong> Parameters are bound with specific data types (string, integer, etc.)</li>
+    </ul>
+    
+    <h4>4. Injection Attempts That Will Fail:</h4>
+    
+    <div class="safe-example">
+      <strong>Test 1 - Comment Injection:</strong>
+      Username: admin' --
+      Password: anything
+      
+      Result: Searches for literal username "admin' --" (fails safely)
+    </div>
+    
+    <div class="safe-example">
+      <strong>Test 2 - OR Condition:</strong>
+      Username: ' OR '1'='1
+      Password: anything
+      
+      Result: Searches for literal username "' OR '1'='1" (fails safely)
+    </div>
+    
+    <div class="safe-example">
+      <strong>Test 3 - UNION Attack:</strong>
+      Username: ' UNION SELECT * FROM users --
+      Password: anything
+      
+      Result: Searches for literal username "' UNION SELECT * FROM users --" (fails safely)
+    </div>
+    
+    <h4>5. Complete PHP Implementation:</h4>
+    <div class="code-block">
+      <span style="color: #6f42c1;">&lt;?php</span><br>
+      <span style="color: #6f42c1;">// secure_login.php - Complete implementation</span><br><br>
+      
+      $servername = "localhost";<br>
+      $db_username = "root";<br>
+      $db_password = "";<br>
+      $dbname = "clinicDB";<br><br>
+      
+      <span style="color: #6f42c1;">// Create connection</span><br>
+      $conn = new mysqli($servername, $db_username, $db_password, $dbname);<br><br>
+      
+      if ($conn->connect_error) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;die("Connection failed: " . $conn->connect_error);<br>
+      }<br><br>
+      
+      if ($_POST) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;$username = $_POST['username'];<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;$password = $_POST['password'];<br><br>
+      
+      &nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #6f42c1;">// SECURE: Prepared statement</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;$sql = "SELECT id, username FROM users WHERE username = ? AND password = ?";<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;$stmt = $conn->prepare($sql);<br><br>
+      
+      &nbsp;&nbsp;&nbsp;&nbsp;if ($stmt) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #6f42c1;">// Bind parameters (s = string)</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$stmt->bind_param("ss", $username, $password);<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$stmt->execute();<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$result = $stmt->get_result();<br><br>
+      
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if ($result->num_rows > 0) {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$user = $result->fetch_assoc();<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;echo "Login successful! Welcome " . htmlspecialchars($user['username']);<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} else {<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;echo "Invalid credentials.";<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;$stmt->close();<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+      }<br>
+      $conn->close();<br>
+      <span style="color: #6f42c1;">?&gt;</span>
+    </div>
+  </div>
+
+  <script>
+    // Load header
+    fetch('/components/header.html')
+      .then(response => response.text())
+      .then(data => {
+        document.getElementById('header-placeholder').innerHTML = data;
+      });
+
+    // Test function to show how injection attempts fail
+    function testInjectionAttempts() {
+      // Cycle through different injection attempts
+      const injectionTests = [
+        { username: "admin' --", password: "anything", description: "Comment injection attempt" },
+        { username: "' OR '1'='1", password: "anything", description: "OR condition bypass attempt" },
+        { username: "' UNION SELECT * FROM users --", password: "anything", description: "UNION attack attempt" }
+      ];
+      
+      let currentTest = 0;
+      const totalTests = injectionTests.length;
+      
+      if (window.currentTestIndex === undefined) {
+        window.currentTestIndex = 0;
+      }
+      
+      const test = injectionTests[window.currentTestIndex];
+      document.getElementById('username').value = test.username;
+      document.getElementById('password').value = test.password;
+      
+      simulateSecureQuery(test.description);
+      
+      window.currentTestIndex = (window.currentTestIndex + 1) % totalTests;
+    }
+
+    // Simulate the secure query generation
+    function simulateSecureQuery(testDescription = null) {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      // Show prepared statement structure
+      const preparedSQL = "SELECT id, username FROM users WHERE username = ? AND password = ?";
+      const parameters = `Parameter 1 (string): "${username}"
+Parameter 2 (string): "${password}"`;
+      
+      document.getElementById('sqlQuery').textContent = preparedSQL;
+      document.getElementById('parameters').textContent = parameters;
+      document.getElementById('queryDisplay').style.display = 'block';
+      
+      // Simulate secure results
+      let resultsHTML = '';
+      
+      if (testDescription) {
+        resultsHTML += `<div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+          <strong>🧪 Test: ${testDescription}</strong>
+        </div>`;
+      }
+      
+      // Check for valid credentials only (injection attempts will fail)
+      if (username === 'john' && password === 'password1') {
+        resultsHTML += `
+          <table class="results-table">
+            <tr><th>ID</th><th>Username</th></tr>
+            <tr><td>2</td><td>john</td></tr>
+          </table>
+          <p style="color: green;"><strong>✅ Valid login - Welcome john!</strong></p>
+        `;
+      } else if (username === 'admin' && password === 'admin123') {
+        resultsHTML += `
+          <table class="results-table">
+            <tr><th>ID</th><th>Username</th></tr>
+            <tr><td>1</td><td>admin</td></tr>
+          </table>
+          <p style="color: green;"><strong>✅ Valid login - Welcome admin!</strong></p>
+        `;
+      } else if (username === 'alice' && password === 'qwerty') {
+        resultsHTML += `
+          <table class="results-table">
+            <tr><th>ID</th><th>Username</th></tr>
+            <tr><td>3</td><td>alice</td></tr>
+          </table>
+          <p style="color: green;"><strong>✅ Valid login - Welcome alice!</strong></p>
+        `;
+      } else {
+        resultsHTML += '<p style="color: orange;">❌ Invalid credentials</p>';
+        
+        if (username.includes("'") || username.includes("--") || username.includes("OR") || username.includes("UNION")) {
+          resultsHTML += `
+            <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 5px; margin-top: 10px;">
+              <strong>🔒 Security Notice:</strong> SQL injection attempt detected and safely neutralized!<br>
+              <strong>How it was prevented:</strong><br>
+              • Input was treated as literal data, not SQL code<br>
+              • Special characters were automatically escaped<br>
+              • No SQL structure was modified<br>
+              • Database searched for literal string: "${username}"
+            </div>
+          `;
+        }
+      }
+      
+      document.getElementById('resultsContent').innerHTML = resultsHTML;
+      document.getElementById('results').style.display = 'block';
+    }
+
+    // Handle form submission
+    document.getElementById('secureLoginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      simulateSecureQuery();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Login - SQL Injection Vulnerable (SELECT)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@700&family=Aileron&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Aileron', sans-serif;
+      text-align: center;
+      padding: 50px;
+      background-color: #ffe6e6; /* Red tint for vulnerable search */
+    }
+    h1 {
+      font-family: 'Arvo', serif;
+      font-size: 2em;
+      margin-bottom: 20px;
+      font-weight: bold;
+      color: #c0392b;
+    }
+    .form-container {
+      margin: 20px auto;
+      max-width: 600px;
+      text-align: left;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
+      margin: 15px 0 5px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    .button {
+      padding: 12px 25px;
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin: 10px 5px;
+      display: inline-block;
+    }
+    .button:hover {
+      background-color: #c0392b;
+    }
+    .vulnerability-info {
+      background-color: #fff3cd;
+      border: 1px solid #ffeaa7;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 30px;
+    }
+    .vulnerability-info h3 {
+      color: #856404;
+      margin-top: 0;
+    }
+    .injection-example {
+      background-color: #f8f9fa;
+      border-left: 4px solid #dc3545;
+      padding: 10px;
+      margin: 10px 0;
+      font-family: monospace;
+    }
+    .query-display {
+      background-color: #f1f3f4;
+      border: 1px solid #dadce0;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 15px 0;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    .results-table th, .results-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .results-table th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <div id="header-placeholder"></div>
+  
+  <h1>🔓 User Login Form (Vulnerable to SQL Injection)</h1>
+  
+  <div class="form-container">
+    <h2>Part A: SELECT Query Vulnerability</h2>
+    <p>This form demonstrates how SQL injection can bypass authentication by manipulating the SELECT query.</p>
+    
+    <form id="loginForm" method="POST" action="process_login.php">
+      <label for="username">Username:</label>
+      <input type="text" id="username" name="username" placeholder="Enter username" required>
+      
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" placeholder="Enter password" required>
+      
+      <button type="submit" class="button">Login</button>
+      <button type="button" class="button" onclick="demonstrateInjection()">Demo SQL Injection</button>
+    </form>
+    
+    <div id="queryDisplay" class="query-display" style="display: none;">
+      <strong>Generated SQL Query:</strong><br>
+      <span id="sqlQuery"></span>
+    </div>
+    
+    <div id="results" style="display: none;">
+      <h3>Query Results:</h3>
+      <div id="resultsContent"></div>
+    </div>
+  </div>
+  
+  <div class="vulnerability-info">
+    <h3>🚨 SQL Injection Examples (Part A - SELECT)</h3>
+    <p><strong>Normal Login:</strong></p>
+    <div class="injection-example">
+      Username: john
+      Password: password1
+      
+      SQL: SELECT * FROM users WHERE username = 'john' AND password = 'password1';
+    </div>
+    
+    <p><strong>SQL Injection Attack Examples:</strong></p>
+    
+    <div class="injection-example">
+      <strong>1. Authentication Bypass:</strong>
+      Username: admin' --
+      Password: anything
+      
+      SQL: SELECT * FROM users WHERE username = 'admin' --' AND password = 'anything';
+      (Comment out password check)
+    </div>
+    
+    <div class="injection-example">
+      <strong>2. OR Condition Bypass:</strong>
+      Username: ' OR '1'='1
+      Password: anything
+      
+      SQL: SELECT * FROM users WHERE username = '' OR '1'='1' AND password = 'anything';
+      (Always true condition)
+    </div>
+    
+    <div class="injection-example">
+      <strong>3. UNION Attack (Extract all users):</strong>
+      Username: ' UNION SELECT id, username, password FROM users --
+      Password: anything
+      
+      SQL: SELECT * FROM users WHERE username = '' UNION SELECT id, username, password FROM users --' AND password = 'anything';
+      (Retrieve all user data)
+    </div>
+    
+    <div class="injection-example">
+      <strong>4. Partial Information Attack:</strong>
+      Username: ad%' OR username LIKE 'a%
+      Password: anything
+      
+      SQL: SELECT * FROM users WHERE username = 'ad%' OR username LIKE 'a%' AND password = 'anything';
+      (Find users starting with 'a' without knowing full username)
+    </div>
+  </div>
+
+  <script>
+    // Load header
+    fetch('/components/header.html')
+      .then(response => response.text())
+      .then(data => {
+        document.getElementById('header-placeholder').innerHTML = data;
+      });
+
+    // Demo function to show SQL injection
+    function demonstrateInjection() {
+      document.getElementById('username').value = "' OR '1'='1";
+      document.getElementById('password').value = "anything";
+      simulateQuery();
+    }
+
+    // Simulate the vulnerable query generation
+    function simulateQuery() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      // Vulnerable query construction (direct concatenation)
+      const query = `SELECT * FROM users WHERE username = '${username}' AND password = '${password}';`;
+      
+      document.getElementById('sqlQuery').textContent = query;
+      document.getElementById('queryDisplay').style.display = 'block';
+      
+      // Simulate results based on injection
+      let resultsHTML = '';
+      if (username.includes("OR '1'='1") || username.includes("' --") || username.includes("UNION")) {
+        resultsHTML = `
+          <table class="results-table">
+            <tr><th>ID</th><th>Username</th><th>Password</th></tr>
+            <tr><td>1</td><td>admin</td><td>admin123</td></tr>
+            <tr><td>2</td><td>john</td><td>password1</td></tr>
+            <tr><td>3</td><td>alice</td><td>qwerty</td></tr>
+          </table>
+          <p style="color: red;"><strong>⚠️ SQL Injection Successful!</strong> All user data exposed!</p>
+        `;
+      } else if (username === 'john' && password === 'password1') {
+        resultsHTML = `
+          <table class="results-table">
+            <tr><th>ID</th><th>Username</th><th>Password</th></tr>
+            <tr><td>2</td><td>john</td><td>password1</td></tr>
+          </table>
+          <p style="color: green;">✅ Valid login</p>
+        `;
+      } else {
+        resultsHTML = '<p style="color: orange;">❌ Invalid credentials</p>';
+      }
+      
+      document.getElementById('resultsContent').innerHTML = resultsHTML;
+      document.getElementById('results').style.display = 'block';
+    }
+
+    // Handle form submission
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      simulateQuery();
+    });
+  </script>
+</body>
+</html>
