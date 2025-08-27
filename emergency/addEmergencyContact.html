@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Add Emergency Contact</title>
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@700&family=Aileron&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family:'Aileron',sans-serif; text-align:center; padding:50px; background:#e6f2ff; }
+    h1 { font-family:'Arvo',serif; font-size:2em; margin-bottom:20px; font-weight:bold; }
+    .button { padding:10px 20px; background:#003366; color:#fff; border:none; border-radius:5px; cursor:pointer; transition:background-color .3s; margin:10px auto; display:block; }
+    .button:hover { background:#002244; }
+    form { margin:20px auto; max-width:400px; text-align:left; }
+    label { display:block; margin:10px 0 5px; font-weight:600; }
+    input, textarea, select { width:100%; padding:10px; margin-bottom:15px; border:1px solid #ccc; border-radius:5px; }
+    input[readonly] { background:#f5f5f5; }
+    .actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:20px 0; }
+    .card { max-width:600px; margin:0 auto; background:#fff; padding:20px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,.1); text-align:left; }
+    .error { color:#b00020; margin-top:10px; text-align:center; }
+    .hint { color:#666; font-size:.9em; margin-top:-8px; margin-bottom:12px; }
+  </style>
+</head>
+<body>
+  <div id="header-placeholder"></div>
+
+  <h1>Add Emergency Contact</h1>
+
+  <div class="actions">
+    <button class="button" type="button" onclick="window.location.href='emergencyContact.html'">Back to Contacts</button>
+    <button class="button" type="button" onclick="window.location.href='../patient/patientDashboard.html'">Back to Dashboard</button>
+  </div>
+
+  <div class="card">
+    <form id="emergencyContactForm" novalidate>
+      <label>Patient</label>
+      <input id="patientDisplay" type="text" value="" readonly />
+
+      <label for="emergencyName">Emergency Contact Name</label>
+      <input type="text" id="emergencyName" required />
+
+      <label for="relationship">Relationship</label>
+      <input type="text" id="relationship" required placeholder="e.g., Spouse, Parent, Friend" />
+
+      <label for="emergencyPhone">Phone</label>
+      <input type="tel" id="emergencyPhone" required placeholder="e.g., 214-555-1234" />
+      <div class="hint">Numbers, spaces, dashes, parentheses allowed.</div>
+
+      <label for="emergencyEmail">Email</label>
+      <input type="email" id="emergencyEmail" required placeholder="name@example.com" />
+
+      <div class="actions">
+        <button type="submit" class="button">Save Contact</button>
+        <button type="button" class="button" onclick="window.location.href='emergencyContact.html'">Cancel</button>
+      </div>
+
+      <div id="formError" class="error" style="display:none;"></div>
+    </form>
+  </div>
+
+  <script>
+    // Load header
+    fetch('../components/header.html')
+      .then(r => r.text())
+      .then(html => { document.getElementById('header-placeholder').innerHTML = html; })
+      .catch(() => {});
+
+    // Guard: must be logged in
+    const patientId = Number(localStorage.getItem('patientId'));
+    if (!patientId) {
+      window.location.href = '../patient/patientLogin.html';
+    }
+
+    // Prefill patient display
+    const first = (localStorage.getItem('patientFirstName') || '').trim();
+    const last  = (localStorage.getItem('patientLastName')  || '').trim();
+    const display = (first || last) ? `${first} ${last}`.trim() : `Patient #${patientId}`;
+    document.getElementById('patientDisplay').value = display;
+
+    // Simple validators
+    function cleanPhone(v) { return v.replace(/[^\d()+\-\s]/g, '').trim(); }
+    function looksLikePhone(v) { return /\d{7,}/.test(v.replace(/\D/g,'')); } // at least 7 digits
+    function looksLikeEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+    const form = document.getElementById('emergencyContactForm');
+    const errBox = document.getElementById('formError');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errBox.style.display = 'none';
+      errBox.textContent = '';
+
+      const Name = document.getElementById('emergencyName').value.trim();
+      const Relationship = document.getElementById('relationship').value.trim();
+      const Phone = cleanPhone(document.getElementById('emergencyPhone').value);
+      const Email = document.getElementById('emergencyEmail').value.trim();
+
+      // Client-side checks
+      if (!Name || !Relationship || !Phone || !Email) {
+        errBox.textContent = 'Please fill in all required fields.';
+        errBox.style.display = 'block';
+        return;
+      }
+      if (!looksLikePhone(Phone)) {
+        errBox.textContent = 'Please enter a valid phone number.';
+        errBox.style.display = 'block';
+        return;
+      }
+      if (!looksLikeEmail(Email)) {
+        errBox.textContent = 'Please enter a valid email.';
+        errBox.style.display = 'block';
+        return;
+      }
+
+      const payload = { PatientID: patientId, Name, Relationship, Phone, Email };
+
+      try {
+        const res = await fetch('../backend/api/addEmergencyContact.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const raw = await res.text();
+        // console.log('addEmergencyContact:', res.status, raw);
+        let out;
+        try { out = JSON.parse(raw); } catch {
+          throw new Error('Server did not return JSON. Check API path and PHP.');
+        }
+
+        if (!out.success) {
+          throw new Error(out.error || 'Failed to save contact.');
+        }
+
+        // Success: go back to list
+        window.location.href = 'emergencyContact.html';
+      } catch (err) {
+        errBox.textContent = err.message || 'Network/server error.';
+        errBox.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

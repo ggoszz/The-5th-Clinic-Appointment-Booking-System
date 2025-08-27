@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Book New Appointment</title>
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@700&family=Aileron&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Aileron', sans-serif;
+      text-align: center;
+      padding: 50px;
+      background-color: #e6f2ff; 
+    }
+    h1 {
+      font-family: 'Arvo', serif;
+      font-size: 2em;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .confirmation h1 {
+      margin-top: 0;
+    }
+    form {
+      margin: 20px auto;
+      max-width: 400px;
+      text-align: left;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    textarea {
+      resize: vertical;
+    }
+    .button {
+      padding: 10px 20px;
+      background-color: #003366; 
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin: 10px auto;
+      display: block;
+    }
+    .button:hover {
+      background-color: #002244; 
+    }
+    .confirmation {
+      display: none;
+    }
+    .board-header {
+      margin-bottom: 50px;
+    }
+    .board-header p {
+      color: #555;
+      font-size: 1.2em;
+    }
+    .board-menu {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .menu-button {
+      margin: 25px auto;
+      width: 100%;
+      padding: 15px 25px;
+      font-size: 1.1em;
+      background-color: #003366;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .menu-button:hover {
+      background-color: #002244;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .error {
+      color: #d32f2f;
+      font-size: 0.875em;
+      margin-top: -10px;
+      margin-bottom: 10px;
+      display: block;
+    }
+    .field-error {
+      border-color: #d32f2f !important;
+      background-color: #ffebee;
+    }
+    .success {
+      color: #388e3c;
+      font-size: 0.875em;
+    }
+    .validation-summary {
+      background-color: #ffebee;
+      border: 1px solid #d32f2f;
+      border-radius: 5px;
+      padding: 10px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .validation-summary.success {
+      background-color: #e8f5e8;
+      border-color: #388e3c;
+      color: #388e3c;
+    }
+  </style>
+</head>
+<body>
+  <div id="header-placeholder"></div>
+  <div class="board-header">
+    <h1>Book New Appointment</h1>
+  </div>
+  
+  <form id="appointmentForm">
+    <div id="validationSummary" class="validation-summary"></div>
+    
+    <label for="doctor">Select Doctor:</label>
+    <select id="doctor" required>
+      <option value="">-- Select Doctor --</option>
+    </select>
+    <span id="doctorError" class="error"></span>
+
+    <label for="date">Appointment Date:</label>
+    <input type="date" id="date" min="" required>
+    <span id="dateError" class="error"></span>
+
+    <label for="time">Select Time:</label>
+    <select id="time" required>
+      <option value="">-- Select Time --</option>
+      <option value="08:00">8:00 AM</option>
+      <option value="08:30">8:30 AM</option>
+      <option value="09:00">9:00 AM</option>
+      <option value="09:30">9:30 AM</option>
+      <option value="10:00">10:00 AM</option>
+      <option value="10:30">10:30 AM</option>
+      <option value="11:00">11:00 AM</option>
+      <option value="11:30">11:30 AM</option>
+      <option value="12:00">12:00 PM</option>
+      <option value="12:30">12:30 PM</option>
+      <option value="13:00">1:00 PM</option>
+      <option value="13:30">1:30 PM</option>
+      <option value="14:00">2:00 PM</option>
+      <option value="14:30">2:30 PM</option>
+      <option value="15:00">3:00 PM</option>
+      <option value="15:30">3:30 PM</option>
+      <option value="16:00">4:00 PM</option>
+    </select>
+    <span id="timeError" class="error"></span>
+
+    <label for="description">Description:</label>
+    <textarea id="description" rows="4" maxlength="500" 
+              placeholder="Briefly describe your reason for visit... (Optional)"></textarea>
+    <span id="descriptionError" class="error"></span>
+    <div style="font-size: 0.875em; color: #666; margin-top: -10px; margin-bottom: 15px;">
+      <span id="charCount">0</span>/500 characters
+    </div>
+
+    <button type="submit" class="button">Book Appointment</button>
+  </form>
+
+  <script>
+     fetch('../components/header.html')
+    .then(response => response.text())
+    .then(data => {
+      document.getElementById('header-placeholder').innerHTML = data;
+    });
+
+    async function loadDoctors() {
+  try {
+    const res = await fetch('../backend/api/getDoctors.php'); // adjust path if needed
+    const data = await res.json();
+    if (!data.success) throw new Error('Failed to load doctors');
+
+    const sel = document.getElementById('doctor');
+    // reset/placeholder
+    sel.innerHTML = '<option value="">-- Select Doctor --</option>';
+
+    if (!data.doctors || data.doctors.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No doctors available';
+      sel.appendChild(opt);
+      sel.disabled = true;
+      return;
+    }
+
+    data.doctors.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.DoctorID; // IMPORTANT: use ID as the value
+      opt.textContent = d.Specialty ? `${d.Name} — ${d.Specialty}` : d.Name;
+      sel.appendChild(opt);
+    });
+
+    // Optional: preselect via query ?doctorId=#
+    const urlParams = new URLSearchParams(location.search);
+    const pre = urlParams.get('doctorId');
+    if (pre) sel.value = pre;
+
+  } catch (err) {
+    console.error('loadDoctors error:', err);
+    // Show a friendly message
+    const sel = document.getElementById('doctor');
+    sel.innerHTML = '<option value="">(Error loading doctors)</option>';
+  }
+}
+
+// call it on page load
+document.addEventListener('DOMContentLoaded', loadDoctors);
+    
+    // Set minimum date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('date').min = tomorrow.toISOString().split('T')[0];
+    
+    // Set maximum date to 3 months from now
+    const maxDate = new Date();
+    maxDate.setMonth(maxDate.getMonth() + 3);
+    document.getElementById('date').max = maxDate.toISOString().split('T')[0];
+
+    // Character counter for description
+    const descriptionField = document.getElementById('description');
+    const charCountElement = document.getElementById('charCount');
+    
+    descriptionField.addEventListener('input', function() {
+      const currentLength = this.value.length;
+      charCountElement.textContent = currentLength;
+      
+      if (currentLength > 500) {
+        charCountElement.style.color = '#d32f2f';
+        this.classList.add('field-error');
+      } else {
+        charCountElement.style.color = '#666';
+        this.classList.remove('field-error');
+      }
+    });
+
+    // Validation functions
+    function showError(fieldId, errorId, message) {
+      const field = document.getElementById(fieldId);
+      const errorElement = document.getElementById(errorId);
+      
+      if (message) {
+        field.classList.add('field-error');
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+      } else {
+        field.classList.remove('field-error');
+        errorElement.textContent = '';
+        errorElement.style.display = 'none';
+      }
+    }
+
+    function showValidationSummary(summaryId, errors, isSuccess = false) {
+      const summary = document.getElementById(summaryId);
+      
+      if (errors.length > 0) {
+        summary.innerHTML = '<strong>Please fix the following errors:</strong><br>' + errors.join('<br>');
+        summary.className = 'validation-summary';
+        summary.style.display = 'block';
+      } else if (isSuccess) {
+        summary.innerHTML = '<strong>Appointment details are valid!</strong>';
+        summary.className = 'validation-summary success';
+        summary.style.display = 'block';
+      } else {
+        summary.style.display = 'none';
+      }
+    }
+
+    function validateAppointmentDate(date) {
+      if (!date) {
+        return 'Appointment date is required';
+      }
+      
+      // Parse date more explicitly to avoid timezone issues
+      const dateParts = date.split('-');
+      const selectedDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const maxDate = new Date(today);
+      maxDate.setMonth(maxDate.getMonth() + 3);
+      
+      if (selectedDate < tomorrow) {
+        return 'Appointment must be scheduled at least one day in advance';
+      }
+      
+      if (selectedDate > maxDate) {
+        return 'Appointments can only be scheduled up to 3 months in advance';
+      }
+      
+      // Check if it's a weekend (Saturday = 6, Sunday = 0)
+      const dayOfWeek = selectedDate.getDay();
+      console.log('Date:', date, 'Day of week:', dayOfWeek, 'Selected date:', selectedDate);
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        return 'Appointments are only available on weekdays (Monday-Friday)';
+      }
+      
+      return null;
+    }
+
+    function validateTime(time, date) {
+      if (!time) {
+        return 'Appointment time is required';
+      }
+      
+      if (!date) {
+        return null; // Date validation will catch this
+      }
+      
+      const selectedDate = new Date(date);
+      const today = new Date();
+      
+      // If appointment is tomorrow, check if time has passed
+      if (selectedDate.toDateString() === new Date(today.getTime() + 86400000).toDateString()) {
+        const [hours, minutes] = time.split(':');
+        const appointmentTime = new Date(selectedDate);
+        appointmentTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        
+        const currentTime = new Date();
+        currentTime.setDate(currentTime.getDate() + 1); // Tomorrow
+        
+        if (appointmentTime <= currentTime) {
+          return 'Please select a future time for tomorrow\'s appointment';
+        }
+      }
+      
+      return null;
+    }
+
+    function validateDescription(description) {
+      if (description && description.length > 500) {
+        return 'Description must be 500 characters or less';
+      }
+      return null;
+    }
+
+    function isTimeSlotAvailable(doctor, date, time) {
+      // Simulate checking availability - in real app, this would be an API call
+      const unavailableSlots = [
+        { doctor: 'Alice Moore', date: '2025-08-07', time: '10:00' },
+        { doctor: 'Marcus Turner', date: '2025-08-08', time: '14:00' },
+      ];
+      
+      return !unavailableSlots.some(slot => 
+        slot.doctor === doctor && slot.date === date && slot.time === time
+      );
+    }
+
+    document.getElementById('appointmentForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const doctor = document.getElementById('doctor').value;
+      const date = document.getElementById('date').value;
+      const time = document.getElementById('time').value;
+      const description = document.getElementById('description').value;
+      
+      let errors = [];
+      
+      // Validate doctor selection
+      if (!doctor) {
+        showError('doctor', 'doctorError', 'Please select a doctor');
+        errors.push('Doctor selection is required');
+      } else {
+        showError('doctor', 'doctorError', null);
+      }
+      
+      // Validate date
+      const dateError = validateAppointmentDate(date);
+      showError('date', 'dateError', dateError);
+      if (dateError) errors.push(dateError);
+      
+      // Validate time
+      const timeError = validateTime(time, date);
+      showError('time', 'timeError', timeError);
+      if (timeError) errors.push(timeError);
+      
+      // Validate description
+      const descriptionError = validateDescription(description);
+      showError('description', 'descriptionError', descriptionError);
+      if (descriptionError) errors.push(descriptionError);
+      
+      // Check time slot availability
+      if (doctor && date && time && !timeError && !dateError) {
+        if (!isTimeSlotAvailable(doctor, date, time)) {
+          const availabilityError = 'Selected time slot is not available. Please choose a different time.';
+          showError('time', 'timeError', availabilityError);
+          errors.push(availabilityError);
+        }
+      }
+      
+      showValidationSummary('validationSummary', errors, errors.length === 0);
+      
+    if (errors.length === 0) {
+  // Pull (or compute) PatientID. Example: from localStorage set at login time.
+  // Make sure you actually set this after a patient logs in!
+  const patientId = parseInt(localStorage.getItem('patientId') || '0', 10);
+  if (!patientId) {
+    showValidationSummary('validationSummary', ['You must be logged in to book an appointment.']);
+    return;
+  }
+
+  // Build payload
+  const payload = {
+    DoctorID: parseInt(document.getElementById('doctor').value, 10),
+    PatientID: patientId,
+    Date: date,                         // 'YYYY-MM-DD'
+    Time: time.length === 5 ? time + ':00' : time, // ensure HH:MM:SS
+    Status: 'Scheduled',
+    Description: description
+  };
+
+  fetch('../backend/api/createAppointment.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  })
+  .then(async r => {
+    const text = await r.text();
+    try { return JSON.parse(text); } catch(e) {
+      console.error('Non-JSON from server:', text);
+      throw new Error('Bad JSON');
+    }
+  })
+  .then(data => {
+    if (!data.success) {
+      showValidationSummary('validationSummary', [data.error || 'Failed to create appointment']);
+      return;
+    }
+    alert('Appointment booked successfully!');
+    window.location.href = 'viewAppointment.html';
+  })
+  .catch(err => {
+    console.error(err);
+    showValidationSummary('validationSummary', ['Network/server error']);
+  });
+}
+
+    });
+
+    // Real-time validation
+    document.getElementById('date').addEventListener('change', function() {
+      const dateError = validateAppointmentDate(this.value);
+      showError('date', 'dateError', dateError);
+      
+      // Also revalidate time if it's already selected
+      const timeField = document.getElementById('time');
+      if (timeField.value) {
+        const timeError = validateTime(timeField.value, this.value);
+        showError('time', 'timeError', timeError);
+      }
+    });
+
+    document.getElementById('time').addEventListener('change', function() {
+      const date = document.getElementById('date').value;
+      const timeError = validateTime(this.value, date);
+      showError('time', 'timeError', timeError);
+    });
+  </script>
+</body>
+</html>

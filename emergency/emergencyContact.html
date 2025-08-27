@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Emergency Contacts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@700&family=Aileron&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Aileron', sans-serif;
+      text-align: center;
+      padding: 50px;
+      background-color: #e6f2ff;
+    }
+    h1 {
+      font-family: 'Arvo', serif;
+      font-size: 2em;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .button {
+      padding: 10px 20px;
+      background-color: #003366;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin: 10px auto;
+      display: block;
+    }
+    .button:hover { background-color: #002244; }
+    .board-header { margin-bottom: 50px; }
+    .list-container { max-width: 700px; margin: 0 auto; }
+    .card {
+      background: white;
+      text-align: left;
+      padding: 16px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 14px;
+    }
+    .row { margin: 6px 0; }
+    .label { font-weight: 700; display: inline-block; min-width: 150px; }
+    .top-actions, .bottom-actions {
+      display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .button.delete { background-color: #9a1b1b; }
+    .button.delete:hover { background-color: #7a1414; }
+    .muted { color: #666; }
+    .error { color: #b00020; }
+  </style>
+</head>
+<body>
+  <div id="header-placeholder"></div>
+
+  <div class="board-header">
+    <h1>Emergency Contacts</h1>
+  </div>
+
+  <div class="top-actions">
+    <button class="button" onclick="window.location.href='addEmergencyContact.html'">Add New Emergency Contact</button>
+    <button class="button" onclick="window.location.href='../patient/patientDashboard.html'">Back to Dashboard</button>
+  </div>
+
+  <div id="contactsContainer" class="list-container">
+    <div class="card"><span class="muted">Loading contacts…</span></div>
+  </div>
+
+  <div class="bottom-actions" id="bottomActions" style="display:none;">
+    <button class="button" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">Back to top</button>
+  </div>
+
+  <script>
+  // Header
+  fetch('../components/header.html')
+    .then(r => r.text())
+    .then(html => { document.getElementById('header-placeholder').innerHTML = html; });
+
+  const patientId = localStorage.getItem('patientId');
+  if (!patientId) window.location.href = '../patient/patientLogin.html';
+
+  async function loadContacts() {
+    const container = document.getElementById('contactsContainer');
+    container.innerHTML = `<div class="card"><span class="muted">Loading contacts…</span></div>`;
+    const url = `../backend/api/getEmergencyContacts.php?patientId=${encodeURIComponent(patientId)}&t=${Date.now()}`;
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      const raw = await res.text();
+      // console.log('getEmergencyContacts:', res.status, raw);
+      const data = JSON.parse(raw);
+
+      if (!data.success) {
+        container.innerHTML = `<div class="card"><span class="error">${data.error || 'Failed to load contacts.'}</span></div>`;
+        return;
+      }
+
+      const list = Array.isArray(data.contacts) ? data.contacts : [];
+      if (!list.length) {
+        container.innerHTML = `<div class="card"><span class="muted">No emergency contacts yet.</span></div>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      list.forEach(c => {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        // detect if ContactID exists
+        const hasId = Object.prototype.hasOwnProperty.call(c, 'ContactID');
+
+        card.innerHTML = `
+          <div class="row"><span class="label">Name:</span> ${escapeHtml(c.Name || '')}</div>
+          <div class="row"><span class="label">Relationship:</span> ${escapeHtml(c.Relationship || '-')}</div>
+          <div class="row"><span class="label">Phone:</span> ${escapeHtml(c.Phone || '')}</div>
+          <div class="row"><span class="label">Email:</span> ${escapeHtml(c.Email || '')}</div>
+          <div style="margin-top:10px; display:flex; gap:10px;">
+            <button class="button delete"
+              ${hasId ? `data-id="${c.ContactID}"` : `data-name="${escapeAttr(c.Name||'')}" data-phone="${escapeAttr(c.Phone||'')}"`}
+            >Delete</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    } catch (e) {
+      console.error(e);
+      container.innerHTML = `<div class="card"><span class="error">Error loading contacts (network/server).</span></div>`;
+    }
+  }
+
+  // Event delegation for Delete
+  document.getElementById('contactsContainer').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button.delete');
+    if (!btn) return;
+
+    if (!confirm('Delete this emergency contact?')) return;
+
+    btn.disabled = true;
+    const prev = btn.textContent;
+    btn.textContent = 'Deleting…';
+
+    const id = btn.dataset.id ? Number(btn.dataset.id) : null;
+
+    try {
+      const payload = id
+        ? { ContactID: id, PatientID: Number(patientId) } // preferred
+        : { PatientID: Number(patientId), Name: btn.dataset.name || '', Phone: btn.dataset.phone || '' }; // fallback
+
+      const res = await fetch('../backend/api/deleteEmergencyContact.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const raw = await res.text();
+      // console.log('deleteEmergencyContact:', res.status, raw);
+      const out = JSON.parse(raw);
+
+      if (!out.success) {
+        alert(out.error || 'Failed to delete contact');
+        btn.disabled = false; btn.textContent = prev;
+        return;
+      }
+
+      loadContacts();
+    } catch (err) {
+      console.error(err);
+      alert('Network/server error');
+      btn.disabled = false; btn.textContent = prev;
+    }
+  });
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+  }
+  function escapeAttr(s) {
+    return String(s).replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  loadContacts();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,8 @@
+1,101,2025-08-05,09:00:00,Scheduled,Annual Physical
+2,102,2025-08-05,10:30:00,Confirmed,Chest pain followup
+3,103,2025-08-06,11:00:00,Scheduled,Skin rash consultation
+4,104,2025-08-07,13:00:00,Cancelled,Migraine check
+5,105,2025-08-07,15:15:00,Completed,Wellness check
+1,102,2025-08-08,08:45:00,Scheduled,Flu shot
+2,101,2025-08-08,10:00:00,Scheduled,Cardio review
+5,103,2025-08-09,14:00:00,Scheduled,General followup

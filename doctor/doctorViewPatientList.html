@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Doctor View Patient List</title>
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@700&family=Aileron&display=swap" rel="stylesheet">
+  <style>
+    body { font-family:'Aileron',sans-serif; text-align:center; padding:50px; background:#e6f2ff; }
+    h1 { font-family:'Arvo',serif; font-size:2em; margin-bottom:20px; font-weight:bold; }
+    #header-placeholder {
+    margin-bottom: 30px; /* Adjust this value to control gap size */
+  }
+    .header-container { display:flex; justify-content:space-between; align-items:center; margin:0 auto; max-width:1200px; padding:0 20px; gap:12px; flex-wrap:wrap; }
+    .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+    .button { padding:10px 16px; background:#003366; color:#fff; border:none; border-radius:6px; cursor:pointer; transition:background .2s; }
+    .button:hover { background:#002244; }
+    .button.secondary { background:#5f6b7a; }
+
+    .table-container { overflow-x:auto; margin:0 auto; max-width:95%; padding:10px; }
+    table { width:100%; border-collapse:collapse; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,0.1); border-radius:8px; overflow:hidden; }
+    th, td { border:1px solid #ccc; padding:12px; text-align:left; white-space:nowrap; background:#fff; }
+    th { background:#003366; color:#fff; }
+    .muted { color:#666; }
+
+    .searchbar { display:flex; gap:8px; align-items:center; }
+    .searchbar input { padding:8px 10px; border:1px solid #bbb; border-radius:6px; min-width:280px; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; background:#eef2f7; font-size:12px; color:#334; margin-left:8px; }
+  </style>
+</head>
+<body>
+  <div id="header-placeholder"></div>
+
+  <div class="header-container" style="margin-bottom:10px;">
+    <div class="toolbar">
+      <button class="button" onclick="window.location.href='doctorViewAppointment.html'">View Appointments</button>
+    </div>
+    <div class="toolbar">
+      <div class="searchbar">
+        <input id="search" type="text" placeholder="Search patients by name, email, phone…">
+        <span class="badge" id="countBadge">0</span>
+      </div>
+      <button class="button secondary" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <h1>Patient List</h1>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Patient ID</th>
+          <th>Patient Name</th>
+          <th>DOB</th>
+          <th>Gender</th>
+          <th>Address</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>Insurance Name</th>
+          <th>Insurance ID</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="10" class="muted" style="text-align:center">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    // Header include (relative path from /doctor/)
+    fetch('../components/header.html')
+      .then(r => r.text())
+      .then(html => { document.getElementById('header-placeholder').innerHTML = html; });
+
+    // "Auth" guard for doctor
+    const doctorId = Number(localStorage.getItem('doctorId'));
+    if (!doctorId) {
+      window.location.href = 'doctorLogin.html';
+    }
+
+    // Helpers
+    function formatDate(yyyyMmDd) {
+      if (!yyyyMmDd) return '';
+      const [y,m,d] = yyyyMmDd.split('-').map(Number);
+      if (!y||!m||!d) return yyyyMmDd;
+      return `${m}/${d}/${y}`;
+    }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+    }
+
+    let allPatients = [];
+
+    async function loadPatients() {
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = `<tr><td colspan="10" class="muted" style="text-align:center">Loading…</td></tr>`;
+
+      const params = new URLSearchParams({ doctorId: String(doctorId), t: Date.now() });
+      try {
+        const res = await fetch(`../backend/api/patients-by-doctor.php?${params.toString()}`, { cache: 'no-store' });
+        const raw = await res.text();
+        let data;
+        try { data = JSON.parse(raw); }
+        catch {
+          tbody.innerHTML = `<tr><td colspan="10" style="color:#b00020;text-align:center">Server did not return JSON.</td></tr>`;
+          return;
+        }
+
+        if (!data.success) {
+          tbody.innerHTML = `<tr><td colspan="10" style="color:#b00020;text-align:center">${data.error || 'Failed to load.'}</td></tr>`;
+          return;
+        }
+
+        allPatients = Array.isArray(data.patients) ? data.patients : [];
+        renderRows(allPatients);
+      } catch (e) {
+        console.error(e);
+        tbody.innerHTML = `<tr><td colspan="10" style="color:#b00020;text-align:center">Network/server error.</td></tr>`;
+      }
+    }
+
+    function renderRows(rows) {
+      const tbody = document.getElementById('tbody');
+      const badge = document.getElementById('countBadge');
+
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="10" class="muted" style="text-align:center">No patients found.</td></tr>`;
+        badge.textContent = '0';
+        return;
+      }
+
+      // Sort by LastName, FirstName then PatientID
+      rows.sort((a,b) => {
+        const an = (a.LastName || '') + (a.FirstName || '') + String(a.PatientID || '');
+        const bn = (b.LastName || '') + (b.FirstName || '') + String(b.PatientID || '');
+        return an.localeCompare(bn, undefined, {sensitivity:'base'});
+      });
+
+      tbody.innerHTML = '';
+      for (const p of rows) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.PatientID ?? ''}</td>
+          <td>${escapeHtml([(p.FirstName||''),(p.LastName||'')].filter(Boolean).join(' '))}</td>
+          <td>${formatDate(p.DOB || '')}</td>
+          <td>${p.Gender ?? ''}</td>
+          <td>${escapeHtml(p.Address || '')}</td>
+          <td>${escapeHtml(p.Phone || '')}</td>
+          <td>${escapeHtml(p.Email || '')}</td>
+          <td>${escapeHtml(p.InsuranceName || '')}</td>
+          <td>${escapeHtml(p.InsuranceID || '')}</td>
+          <td>${escapeHtml(p.Note || '')}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+      badge.textContent = String(rows.length);
+    }
+
+    // Simple client-side search
+    document.getElementById('search').addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (!q) { renderRows(allPatients); return; }
+      const filtered = allPatients.filter(p => {
+        const hay = [
+          p.PatientID, p.FirstName, p.LastName, p.Email, p.Phone, p.Address,
+          p.InsuranceName, p.InsuranceID, p.Gender, p.Note
+        ].map(v => String(v || '').toLowerCase()).join(' ');
+        return hay.includes(q);
+      });
+      renderRows(filtered);
+    });
+
+    function logout() {
+      localStorage.removeItem('doctorId');
+      localStorage.removeItem('doctorName');
+      localStorage.removeItem('doctorSpecialty');
+      window.location.href = 'doctorLogin.html';
+    }
+
+    // init
+    loadPatients();
+  </script>
+</body>
+</html>

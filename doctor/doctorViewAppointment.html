@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Doctor View Appointments</title>
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@700&family=Aileron&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family:'Aileron',sans-serif; text-align:center; padding:50px; background:#e6f2ff; }
+    h1 { font-family:'Arvo',serif; font-size:2em; margin:10px 0 20px; font-weight:bold; }
+    .header-container { display:flex; justify-content:space-between; align-items:center; max-width:1200px; padding:0 20px; margin:0 auto; gap:10px; flex-wrap:wrap; }
+    .button { padding:10px 16px; background:#003366; color:#fff; border:none; border-radius:6px; cursor:pointer; transition:background .2s; }
+    .button:hover { background:#002244; }
+    .button.secondary { background:#5f6b7a; }
+    .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    table { width:90%; max-width:1200px; border-collapse:collapse; margin:16px auto; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,0.1); border-radius:8px; overflow:hidden; }
+    th, td { border:1px solid #ddd; padding:10px; text-align:left; }
+    th { background:#003366; color:#fff; }
+    select { padding:6px; }
+    .muted { color:#666; }
+    #header-placeholder {
+    margin-bottom: 30px; /* Adjust this value to control gap size */
+  }
+    select.status-cancelled { background-color:#ffebee; color:#b00020; font-weight:600; }
+    select.status-completed { background-color:#e8f5e9; color:#1b5e20; font-weight:600; }
+    select.status-confirmed { background-color:#e3f2fd; color:#0d47a1; font-weight:600; }
+    select.status-scheduled { background-color:#fffde7; color:#f57f17; font-weight:600; }
+  </style>
+</head>
+<body>
+  <div id="header-placeholder"></div>
+
+  <div class="header-container">
+    <div class="toolbar">
+      <button class="button" onclick="window.location.href='doctorViewPatientList.html'">View Your Patient List</button>
+      <button class="button secondary" id="filterToday">Today</button>
+      <button class="button secondary" id="filterAll">All</button>
+    </div>
+    <div class="toolbar">
+      <span class="muted" id="doctorInfo"></span>
+      <button class="button" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <h1>View Appointments</h1>
+
+  <table id="apptTable">
+    <thead>
+      <tr>
+        <th>Patient ID</th>
+        <th>Patient Name</th>
+        <th>Time</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      <tr><td colspan="6" class="muted" style="text-align:center">Loading…</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    // Header include (path from /doctor/)
+    fetch('../components/header.html')
+      .then(r => r.text())
+      .then(html => { document.getElementById('header-placeholder').innerHTML = html; });
+
+    // "Auth" guard
+    const doctorId = Number(localStorage.getItem('doctorId'));
+    const doctorName = localStorage.getItem('doctorName') || '';
+    const doctorSpecialty = localStorage.getItem('doctorSpecialty') || '';
+    if (!doctorId) window.location.href = 'doctorLogin.html';
+    document.getElementById('doctorInfo').textContent =
+      doctorName ? `${doctorName}${doctorSpecialty ? ' — ' + doctorSpecialty : ''} (ID ${doctorId})` : `Doctor #${doctorId}`;
+
+    // Helpers
+    function formatDate(yyyyMmDd) {
+      const [y, m, d] = (yyyyMmDd || '').split('-').map(Number);
+      if (!y || !m || !d) return yyyyMmDd || '';
+      return `${m}/${d}/${y}`;
+    }
+    function formatTime(hms) {
+      const [H, M] = (hms || '').split(':').map(Number);
+      if (Number.isNaN(H) || Number.isNaN(M)) return hms || '';
+      const ampm = H >= 12 ? 'PM' : 'AM';
+      const h = ((H + 11) % 12) + 1;
+      return `${h}:${String(M).padStart(2, '0')} ${ampm}`;
+    }
+    function ensureSeconds(t) { return t && t.length === 5 ? t + ':00' : t; }
+
+    function statusClass(val) {
+      const v = String(val || '').toLowerCase();
+      if (v === 'cancelled' || v === 'canceled') return 'status-cancelled';
+      if (v === 'completed') return 'status-completed';
+      if (v === 'confirmed') return 'status-confirmed';
+      return 'status-scheduled';
+    }
+    function applyStatusStyleToSelect(selectEl, val) {
+      // remove any previous status-* then add the new one
+      selectEl.className = selectEl.className
+        .split(' ')
+        .filter(c => !/^status-/.test(c))
+        .join(' ')
+        .trim();
+      const cls = statusClass(val);
+      selectEl.className = (selectEl.className ? selectEl.className + ' ' : '') + cls;
+    }
+
+    // Load appointments
+    let showTodayOnly = true;
+    document.getElementById('filterToday').addEventListener('click', () => { showTodayOnly = true; loadAppts(); });
+    document.getElementById('filterAll').addEventListener('click', () => { showTodayOnly = false; loadAppts(); });
+
+    async function loadAppts() {
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center">Loading…</td></tr>`;
+
+      const params = new URLSearchParams({ doctorId: String(doctorId), t: Date.now() });
+      if (showTodayOnly) {
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        params.set('date', `${y}-${m}-${d}`); // server can filter to today
+      }
+
+      try {
+        const res = await fetch(`../backend/api/appointments-by-doctor.php?${params.toString()}`, { cache: 'no-store' });
+        const raw = await res.text();
+        let data;
+        try { data = JSON.parse(raw); }
+        catch { tbody.innerHTML = `<tr><td colspan="6" style="color:#b00020;text-align:center">Server did not return JSON.</td></tr>`; return; }
+
+        if (!data.success) {
+          tbody.innerHTML = `<tr><td colspan="6" style="color:#b00020;text-align:center">${data.error || 'Failed to load.'}</td></tr>`;
+          return;
+        }
+
+        const appts = Array.isArray(data.appointments) ? data.appointments : [];
+        if (!appts.length) {
+          tbody.innerHTML = `<tr><td colspan="6" class="muted" style="text-align:center">No appointments found.</td></tr>`;
+          return;
+        }
+
+        // Sort by Date then Time
+        appts.sort((a,b) => (a.Date + a.Time).localeCompare(b.Date + b.Time));
+
+        tbody.innerHTML = '';
+        for (const a of appts) {
+          const tr = document.createElement('tr');
+          const disabled = /^(cancelled|canceled|completed)$/i.test(String(a.Status || ''));
+          const key = {
+            DoctorID: a.DoctorID,
+            PatientID: a.PatientID,
+            Date: a.Date,
+            Time: ensureSeconds(a.Time || '')
+          };
+
+          tr.innerHTML = `
+            <td>${a.PatientID}</td>
+            <td>${a.PatientName || ''}</td>
+            <td>${formatTime(a.Time)}</td>
+            <td>${formatDate(a.Date)}</td>
+            <td>
+              <select ${disabled ? 'disabled' : ''} data-key='${encodeURIComponent(JSON.stringify(key))}'>
+                ${renderOption('Scheduled', a.Status)}
+                ${renderOption('Confirmed', a.Status)}
+                ${renderOption('Cancelled', a.Status)}
+                ${renderOption('Completed', a.Status)}
+              </select>
+            </td>
+            <td>${a.Description ? escapeHtml(a.Description) : ''}</td>
+          `;
+          tbody.appendChild(tr);
+
+          // apply color class to the <select>
+          const sel = tr.querySelector('select');
+          applyStatusStyleToSelect(sel, a.Status);
+        }
+
+      } catch (e) {
+        console.error(e);
+        document.getElementById('tbody').innerHTML = `<tr><td colspan="6" style="color:#b00020;text-align:center">Network/server error.</td></tr>`;
+      }
+    }
+
+    function renderOption(value, current) {
+      const sel = String(current || '').toLowerCase() === String(value).toLowerCase() ? 'selected' : '';
+      return `<option value="${value}" ${sel}>${value}</option>`;
+    }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+    }
+
+    // Save status on change (event delegation)
+    document.getElementById('apptTable').addEventListener('change', async (e) => {
+      const sel = e.target.closest('select');
+      if (!sel) return;
+
+      const key = JSON.parse(decodeURIComponent(sel.dataset.key));
+      const newStatus = sel.value;
+
+      // optimistic UI: lock + recolor immediately
+      const prevDisabled = sel.disabled;
+      const prevValue = sel.value;
+      sel.disabled = true;
+      applyStatusStyleToSelect(sel, newStatus);
+
+      try {
+        // Send BOTH original key and new values (originals = new since we're only changing Status)
+        const payload = {
+          oDoctorID: Number(key.DoctorID),
+          oPatientID: Number(key.PatientID),
+          oDate: key.Date,
+          oTime: ensureSeconds(key.Time),
+
+          DoctorID: Number(key.DoctorID),
+          PatientID: Number(key.PatientID),
+          Date: key.Date,
+          Time: ensureSeconds(key.Time),
+          Status: newStatus,
+          Description: null
+        };
+
+        const res = await fetch('../backend/api/updateAppointment.php', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        const raw = await res.text();
+        let out;
+        try { out = JSON.parse(raw); }
+        catch {
+          alert('Server error: non-JSON response');
+          sel.value = prevValue;
+          applyStatusStyleToSelect(sel, prevValue);
+          sel.disabled = prevDisabled;
+          return;
+        }
+
+        if (!out.success) {
+          alert(out.error || 'Failed to update status');
+          sel.value = prevValue;
+          applyStatusStyleToSelect(sel, prevValue);
+          sel.disabled = prevDisabled;
+          return;
+        }
+
+        // Disable after terminal statuses
+        if (/^(Cancelled|Completed)$/i.test(newStatus)) {
+          sel.disabled = true;
+        } else {
+          sel.disabled = prevDisabled;
+        }
+
+      } catch (err) {
+        console.error(err);
+        alert('Network/server error');
+        sel.value = prevValue;
+        applyStatusStyleToSelect(sel, prevValue);
+        sel.disabled = prevDisabled;
+      }
+    });
+
+    function logout() {
+      localStorage.removeItem('doctorId');
+      localStorage.removeItem('doctorName');
+      localStorage.removeItem('doctorSpecialty');
+      window.location.href = 'doctorLogin.html';
+    }
+
+    // initial load
+    loadAppts();
+  </script>
+</body>
+</html>

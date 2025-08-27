@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Appointment</title>
+  <link href="https://fonts.googleapis.com/css2?family=Arvo:wght@700&family=Aileron&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Aileron', sans-serif;
+      text-align: center;
+      padding: 50px;
+      background-color: #e6f2ff; 
+    }
+    h1 {
+      font-family: 'Arvo', serif;
+      font-size: 2em;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .confirmation h1 {
+      margin-top: 0;
+    }
+    form {
+      margin: 20px auto;
+      max-width: 400px;
+      text-align: left;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    textarea {
+      resize: vertical;
+    }
+    .button {
+      padding: 10px 20px;
+      background-color: #003366;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin: 10px auto;
+      display: block;
+    }
+    .button:hover {
+      background-color: #002244; 
+    }
+    .confirmation {
+      display: none;
+    }
+    .board-header {
+      margin-bottom: 50px;
+    }
+    .board-header p {
+      color: #555;
+      font-size: 1.2em;
+    }
+    .board-menu {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .menu-button {
+      margin: 25px auto;
+      width: 100%;
+      padding: 15px 25px;
+      font-size: 1.1em;
+      background-color: #003366;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .menu-button:hover {
+    }
+    
+    .appointment-details {
+      max-width: 400px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      text-align: left; 
+    }
+    .detail-row {
+      margin-bottom: 15px;
+    }
+    .form-row {
+      margin-bottom: 15px;
+    }
+    .form-row label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+    .form-row input[readonly] {
+      background-color: #f5f5f5;
+    }
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .appointment-actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .appointment-actions .button {
+      margin: 0;
+      width: auto;
+      min-width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <div id="header-placeholder"></div>
+  <div class="board-header">
+    <h1>Edit Appointment Details</h1>
+  </div>
+  
+  <form id="editAppointmentForm">
+  <!-- Patient -->
+<div class="form-row">
+  <label>Patient Name:</label>
+  <input type="text" value="" readonly>
+</div>
+
+<!-- Doctor -->
+<div class="form-row">
+  <label for="editDoctor">Doctor:</label>
+  <select id="editDoctor" required></select>
+</div>
+
+<!-- Date -->
+<div class="form-row">
+  <label for="editDate">Date:</label>
+  <input type="date" id="editDate" required>
+</div>
+
+<!-- Time -->
+<div class="form-row">
+  <label for="editTime">Time:</label>
+  <select id="editTime" required>
+    <option value="08:00">8:00 AM</option>
+    <option value="08:30">8:30 AM</option>
+    <option value="09:00">9:00 AM</option>
+    <option value="09:30">9:30 AM</option>
+    <option value="10:00">10:00 AM</option>
+    <option value="10:30">10:30 AM</option>
+    <option value="11:00">11:00 AM</option>
+    <option value="11:30">11:30 AM</option>
+    <option value="12:00">12:00 PM</option>
+    <option value="12:30">12:30 PM</option>
+    <option value="13:00">1:00 PM</option>
+    <option value="13:30">1:30 PM</option>
+    <option value="14:00">2:00 PM</option>
+    <option value="14:30">2:30 PM</option>
+    <option value="15:00">3:00 PM</option>
+    <option value="15:30">3:30 PM</option>
+    <option value="16:00">4:00 PM</option>
+  </select>
+</div>
+
+<!-- Description -->
+<div class="form-row">
+  <label for="editDescription">Description:</label>
+  <textarea id="editDescription" rows="4"></textarea>
+</div>
+
+    
+    <div class="form-actions">
+      <button type="submit" class="button">Save Changes</button>
+      <button type="button" class="button" onclick="window.location.href='viewAppointment.html'">Cancel</button>
+    </div>
+  </form>
+  
+  <script>
+  // Load header
+  fetch('../components/header.html')
+    .then(r => r.text())
+    .then(html => document.getElementById('header-placeholder').innerHTML = html);
+
+  // Get query params (original key + optional fields)
+  const qs = new URLSearchParams(location.search);
+  const oDoctorID = Number(qs.get('DoctorID'));
+  const oPatientID = Number(qs.get('PatientID') || localStorage.getItem('patientId'));
+  const oDate = qs.get('Date');        // yyyy-mm-dd
+  const oTime = qs.get('Time');        // hh:mm:ss
+
+  // guard
+  if (!oDoctorID || !oPatientID || !oDate || !oTime) {
+    alert('Missing appointment key. Go back and select an appointment to edit.');
+    window.location.href = 'viewAppointment.html';
+  }
+
+  // Prefill patient name (from storage if you saved it at login)
+  const patientName = (localStorage.getItem('patientFirstName') || '') + ' ' + (localStorage.getItem('patientLastName') || '');
+  document.querySelector('input[readonly]').value = patientName.trim() || `Patient #${oPatientID}`;
+
+  // Load doctors and preselect current
+  async function loadDoctorsAndPrefill() {
+    const sel = document.getElementById('editDoctor');
+    sel.innerHTML = '<option value="">Loading...</option>';
+
+    const res = await fetch('../backend/api/getDoctors.php');
+    const data = await res.json();
+    sel.innerHTML = '';
+
+    data.doctors.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.DoctorID;
+      opt.textContent = d.Specialty ? `${d.Name} — ${d.Specialty}` : d.Name;
+      sel.appendChild(opt);
+    });
+
+    // Preselect current doctor
+    sel.value = String(oDoctorID);
+  }
+
+  // Prefill date/time/description (if description passed in query; otherwise leave as-is)
+  function prefillFields() {
+    document.getElementById('editDate').value = oDate; // expects yyyy-mm-dd
+    const time = oTime.length === 5 ? (oTime + ':00') : oTime; // hh:mm or hh:mm:ss
+    document.getElementById('editTime').value = time.slice(0,5); // set as hh:mm for the select
+    document.getElementById('editDescription').value = qs.get('Description') || document.getElementById('editDescription').value;
+  }
+
+  // Convert hh:mm -> hh:mm:ss
+  function ensureSeconds(t) { return t.length === 5 ? t + ':00' : t; }
+
+  document.getElementById('editAppointmentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const DoctorID = Number(document.getElementById('editDoctor').value);
+    const PatientID = Number(oPatientID); // keep same patient
+    const Date = document.getElementById('editDate').value;
+    const Time = ensureSeconds(document.getElementById('editTime').value);
+    const Description = document.getElementById('editDescription').value.trim();
+
+    if (!DoctorID || !PatientID || !Date || !Time) {
+      alert('All fields are required.');
+      return;
+    }
+
+    const payload = {
+      oDoctorID, oPatientID, oDate, oTime,
+      DoctorID, PatientID, Date, Time,
+      Status: 'Scheduled', // or keep previous; you could pass original status via query if you want
+      Description
+    };
+
+    try {
+      const res = await fetch('../backend/api/updateAppointment.php', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const out = await res.json();
+      if (!out.success) {
+        alert(out.error || 'Failed to update appointment');
+        return;
+      }
+      alert('Appointment updated!');
+      window.location.href = 'viewAppointment.html';
+    } catch (err) {
+      console.error(err);
+      alert('Network/server error');
+    }
+  });
+
+  // init
+  loadDoctorsAndPrefill().then(prefillFields);
+</script>
+
+</body>
+</html>
